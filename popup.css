@@ -1,0 +1,5 @@
+body{font-family:Arial, sans-serif;margin:0;padding:12px;background:#fff;color:#111;min-width:260px}
+.popup h3{margin:0 0 6px 0}
+#currentProfile{margin-bottom:8px;color:#333}
+.actions{display:flex;gap:8px}
+button{padding:8px;border-radius:8px;border:0;background:#eef0ff;color:#0b1b3a;cursor:pointer}
