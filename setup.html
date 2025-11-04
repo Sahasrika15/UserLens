@@ -24,47 +24,48 @@
     <section class="custom-section">
       <button id="openCustom">Create Custom Profile</button>
       <div id="customPanel" class="custom-panel hidden">
-        
-        <label>Font family
-          <select id="fontFamily">
-            <option value="'Arial', sans-serif">Arial</option>
-            <option value="'Verdana', sans-serif">Verdana (Dyslexia-Friendly)</option>
-            <option value="'Open Sans', sans-serif">Open Sans</option>
-            <option value="'Roboto', sans-serif">Roboto</option>
-            <option value="'Comic Sans MS', cursive, sans-serif">Comic Sans</option>
-            <option value="'Georgia', serif">Georgia</option>
-            <option value="'Times New Roman', serif">Times New Roman</option>
-            <option value="'Courier New', monospace">Courier New</option>
-            <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
-            <option value="'Lucida Grande', sans-serif">Lucida Grande</option>
-          </select>
-        </label>
+        <div class="form-grid">
+          <label class="full-width">Font family
+            <select id="fontFamily">
+              <option value="'Arial', sans-serif">Arial</option>
+              <option value="'Verdana', sans-serif">Verdana (Dyslexia-Friendly)</option>
+              <option value="'Open Sans', sans-serif">Open Sans</option>
+              <option value="'Roboto', sans-serif">Roboto</option>
+              <option value="'Comic Sans MS', cursive, sans-serif">Comic Sans</option>
+              <option value="'Georgia', serif">Georgia</option>
+              <option value="'Times New Roman', serif">Times New Roman</option>
+              <option value="'Courier New', monospace">Courier New</option>
+              <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+              <option value="'Lucida Grande', sans-serif">Lucida Grande</option>
+            </select>
+          </label>
 
-        <label>Font size (<span id="fontSizeVal">18</span>px)
-          <input id="fontSize" type="range" min="12" max="40" value="18" />
-        </label>
+          <label>Font size (<span id="fontSizeVal">18</span>px)
+            <input id="fontSize" type="range" min="12" max="40" value="18" />
+          </label>
 
-        <label>Letter spacing (<span id="letterSpacingVal">0.0</span>px)
-          <input id="letterSpacing" type="range" min="0" max="1" step="0.1" value="0" />
-        </label>
+          <label>Letter spacing (<span id="letterSpacingVal">0.0</span>px)
+            <input id="letterSpacing" type="range" min="0" max="1" step="0.1" value="0" />
+          </label>
 
-        <label>Word spacing (<span id="wordSpacingVal">0.0</span>px)
-          <input id="wordSpacing" type="range" min="0" max="1" step="0.1" value="0" />
-        </label>
+          <label>Word spacing (<span id="wordSpacingVal">0.0</span>px)
+            <input id="wordSpacing" type="range" min="0" max="1" step="0.1" value="0" />
+          </label>
 
-        <label>Line spacing (<span id="lineHeightVal">1.6</span>)
-          <input id="lineHeight" type="range" min="1" max="2.5" step="0.1" value="1.6" />
-        </label>
+          <label>Line spacing (<span id="lineHeightVal">1.6</span>)
+            <input id="lineHeight" type="range" min="1" max="2.5" step="0.1" value="1.6" />
+          </label>
 
-        <label>Background color
-          <input id="bgColor" type="color" value="#ffffff" />
-        </label>
+          <label>Background color
+            <input id="bgColor" type="color" value="#ffffff" />
+          </label>
 
-        <label>Text color
-          <input id="textColor" type="color" value="#000000" />
-        </label>
+          <label>Text color
+            <input id="textColor" type="color" value="#000000" />
+          </label>
+        </div>
 
-        <label class="checkbox-label">
+        <label class="checkbox-label full-width">
           <input type="checkbox" id="animationsCheckbox" checked />
           <span>Enable Animations & Transitions</span>
         </label>
@@ -75,28 +76,31 @@
       </div>
     </section>
 
-    <section class="preview-area">
-      <h2>Preview</h2>
-      <div id="profileDisplay" class="profile-display">Profile: Dyslexia</div>
-      <div id="previewBox" class="preview-box">
-        <p id="previewText">
-          The quick brown fox jumps over the lazy dog. This sample text previews the chosen accessibility profile. Adjust settings to see live changes.
-        </p>
-      </div>
-    </section>
-
-    <section class="animation-showcase">
-      <h3>Animation Status</h3>
-      <div id="animationBox" class="animation-box">
-        <div class="dot">
-          <div class="side-1"></div>
-          <div class="side-2"></div>
-          <div class="side-3"></div>
-          <div class="side-4"></div>
+    <div class="preview-container">
+      <section class="preview-area">
+        <h2>Preview</h2>
+        <div id="profileDisplay" class="profile-display">Profile: Dyslexia</div>
+        <div id="previewBox" class="preview-box">
+          <p id="previewText">
+            The quick brown fox jumps over the lazy dog. This sample text previews the chosen accessibility profile. Adjust settings to see live changes.
+          </p>
         </div>
-      </div>
-      <p id="animationStatus" class="animation-status">Animations: ON</p>
-    </section>
+      </section>
+
+      <section class="animation-showcase" id="animationShowcase">
+        <h3>Animation Demo</h3>
+        <div id="animationBox" class="animation-box">
+          <div class="cube">
+            <div class="cube-face front"></div>
+            <div class="cube-face back"></div>
+            <div class="cube-face right"></div>
+            <div class="cube-face left"></div>
+            <div class="cube-face top"></div>
+            <div class="cube-face bottom"></div>
+          </div>
+        </div>
+      </section>
+    </div>
 
     <footer>
       <button id="saveBtn" class="primary">Save & Continue</button>

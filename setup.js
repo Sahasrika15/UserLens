@@ -31,8 +31,7 @@ const textColorEl = document.getElementById('textColor');
 const animationsCheckbox = document.getElementById('animationsCheckbox');
 const saveCustom = document.getElementById('saveCustom');
 const animationBox = document.getElementById('animationBox');
-const animationStatus = document.getElementById('animationStatus');
-const animationShowcase = document.querySelector('.animation-showcase');
+const animationShowcase = document.getElementById('animationShowcase');
 
 let currentSelection = null;
 let customSettings = {};
@@ -66,15 +65,11 @@ function applyToPreview(settings){
     previewText.classList.add('no-animations');
     animationBox.classList.add('no-animations');
     animationShowcase.classList.add('hidden-showcase');
-    animationStatus.textContent = 'Animations: OFF';
-    animationStatus.style.color = '#d32f2f';
   } else {
     previewBox.classList.remove('no-animations');
     previewText.classList.remove('no-animations');
     animationBox.classList.remove('no-animations');
     animationShowcase.classList.remove('hidden-showcase');
-    animationStatus.textContent = 'Animations: ON';
-    animationStatus.style.color = '#2e7d32';
   }
 }
 
