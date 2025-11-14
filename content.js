@@ -186,7 +186,27 @@ console.log('AURA content: loaded on', location.href);
   function auraGetPanelUrl(){
     return chrome.runtime.getURL('sidepanel.html');
   }
-  function auraOpenSidePanel() {
+  
+  // FIX: New function to get the current profile from storage
+  function getCurrentProfileForPanel() {
+    return new Promise((resolve) => {
+        if (chrome && chrome.storage && chrome.storage.sync) {
+            chrome.storage.sync.get(['aura_profile'], (res) => {
+                resolve(res?.aura_profile || null);
+            });
+        } else {
+            const raw = localStorage.getItem('aura_profile');
+            try {
+                resolve(raw ? JSON.parse(raw) : null);
+            } catch(e) {
+                resolve(null);
+            }
+        }
+    });
+  }
+  
+  // FIX: Modify auraOpenSidePanel to fetch and send the profile to the iframe
+  async function auraOpenSidePanel() {
     if (document.getElementById('aura-sidepanel-host')) {
       auraShowSidePanel();
       return;
@@ -211,8 +231,19 @@ console.log('AURA content: loaded on', location.href);
       document.body.appendChild(auraPanelHost);
       auraPanelHost.appendChild(auraPanelIframe);
 
-      auraPanelIframe.addEventListener('load', () => {
-        try { auraPanelIframe.contentWindow?.focus(); } catch (e) {}
+      auraPanelIframe.addEventListener('load', async () => {
+        try { 
+            auraPanelIframe.contentWindow?.focus(); 
+            // FIX: Send the current profile to the side panel script
+            const profile = await getCurrentProfileForPanel();
+            if (profile) {
+                auraPanelIframe.contentWindow.postMessage({ 
+                    AURA_PROFILE_LOAD: true, 
+                    profile: profile 
+                }, '*');
+                safeLog('AURA content: sent profile to side panel');
+            }
+        } catch (e) {}
       });
 
       window.addEventListener('message', (e) => {

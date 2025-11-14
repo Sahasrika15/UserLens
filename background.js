@@ -54,22 +54,36 @@ function pickTopChunks(question, sections, k=2){
 }
 
 async function askLLM({question, contextBlocks, pageInfo}) {
-  // mock LLM — replace with real API if needed.
-  return {
-    tldr: "This page explains the core steps briefly.",
-    bullets: [
-      "Identify the topic section.",
-      "Read the steps under headings.",
-      "Follow procedures in order.",
-      "Check limitations if listed."
-    ],
-    details: "Source text was used from the most relevant two sections.",
-    citations: (contextBlocks||[]).slice(0,1).map(c => ({
-      heading: c?.heading || "Unknown",
-      anchor: c?.anchor || ""
-    }))
-  };
+  try {
+    // keep payload compact — you already trimmed each section text to 8000 chars earlier
+    const resp = await fetch('http://localhost:3000/ask', { // replace with your deployed server URL
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question,
+        sections: contextBlocks,
+        pageInfo
+      })
+    });
+    if (!resp.ok) {
+      const txt = await resp.text();
+      console.warn('askLLM proxy error', resp.status, txt);
+      return { tldr: 'Error', bullets: [ 'LLM proxy error' ], details: txt };
+    }
+    const data = await resp.json();
+    // ensure shape
+    return {
+      tldr: data.tldr || '',
+      bullets: data.bullets || [],
+      details: data.details || '',
+      citations: data.citations || []
+    };
+  } catch (e) {
+    console.error('askLLM fetch failed', e);
+    return { tldr: 'Error', bullets: [ String(e) ], details: '' };
+  }
 }
+
 
 // helper: ask tab for sections with timeout and lastError handling
 function askTabForSections(tabId) {
@@ -129,7 +143,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             contextBlocks: top,
             pageInfo: { url: tabResp.url || '', title: tabResp.title || '' }
           });
-          sendResponse(data);
+          // FIX: Add pageUrl to the response so sidePanel.js can construct citation links
+          sendResponse({
+            ...data,
+            pageUrl: tabResp.url || ''
+          });
           return;
         } catch (e) {
           console.error('AURA_PANEL_ASK LLM error', e);

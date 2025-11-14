@@ -10,6 +10,8 @@
   const speakBtn = document.getElementById('speak');
   const closeBtn = document.getElementById('closeBtn');
   const largeText = document.getElementById('largeText');
+  // FIX: New element reference for applying styles
+  const panelContent = document.getElementById('panelContent');
 
   // Helper to set status text
   function setStatus(text, temporary = true) {
@@ -45,18 +47,57 @@
     closeBtn.addEventListener('click', () => parent.postMessage({ AURA_PANEL_CLOSE: true }, '*'));
   }
 
-  // Large text toggle
+  // FIX: Remove large text toggle and logic (it's now handled by the profile)
   if (largeText) {
-    largeText.addEventListener('change', () => {
-      const root = document.getElementById('root');
-      if (!root) return;
-      root.style.fontSize = largeText.checked ? '18px' : '14px';
-      root.style.lineHeight = largeText.checked ? '1.7' : '1.6';
-    });
-    // apply initial state
-    largeText.dispatchEvent(new Event('change'));
+    // Large text is now redundant. Hide it.
+    const parentLabel = largeText.closest('label');
+    if (parentLabel) parentLabel.style.display = 'none';
   }
 
+  // FIX: Add function to apply the profile settings to the panel
+  function applyProfileToPanel(profile) {
+      if (!profile || !panelContent) return;
+      
+      // Apply profile styles to the wrapper
+      panelContent.style.backgroundColor = profile.bgColor;
+      panelContent.style.color = profile.textColor;
+      panelContent.style.fontFamily = profile.fontFamily;
+      // Use profile.fontSize for base text, but perhaps a slightly smaller size for the dense panel
+      panelContent.style.fontSize = Math.min(profile.fontSize, 18) + 'px'; 
+      panelContent.style.lineHeight = profile.lineHeight;
+      panelContent.style.letterSpacing = (profile.letterSpacing || 0) + 'px';
+      panelContent.style.wordSpacing = (profile.wordSpacing || 0) + 'px';
+
+      // Also adjust the header background for contrast/consistency
+      const header = document.querySelector('#panelContent header');
+      if (header) {
+          header.style.backgroundColor = profile.bgColor;
+          header.style.color = profile.textColor;
+      }
+
+      // We need a subtle fix for input/button elements which often ignore parent styles
+      const style = document.createElement('style');
+      style.textContent = `
+          #panelContent input, #panelContent button {
+              font-family: ${profile.fontFamily} !important;
+              color: ${profile.textColor} !important;
+              font-size: ${Math.min(profile.fontSize, 16)}px !important;
+          }
+      `;
+      document.head.appendChild(style);
+  }
+
+  // FIX: Listen for the profile message from the content script
+  window.addEventListener('message', (e) => {
+      try {
+          if (e?.data?.AURA_PROFILE_LOAD && e.data.profile) {
+              applyProfileToPanel(e.data.profile);
+          }
+      } catch(error){
+          console.error('Side panel message handler error', error);
+      }
+  }, { passive: true });
+  
   // helper that sends message to background and handles lastError
   function askBackground(question) {
     return new Promise((resolve, reject) => {
@@ -118,15 +159,24 @@
   function renderAnswer(data) {
     if (!ans) return;
     if (!data) { ans.textContent = 'No answer.'; return; }
-    const cite = (data.citations && data.citations[0]) ? data.citations[0] : null;
+    
+    // FIX: Get pageUrl from the data object returned by background.js
+    const pageUrl = data.pageUrl || '#'; 
+
+    const citationsHtml = (data.citations || []).map(c => {
+      // FIX: Use the pageUrl variable to correctly form the full citation anchor link
+      if (c.anchor) return `<div style="font-size:12px;color:#555">Source: <a href="${pageUrl}${c.anchor}" target="_blank" rel="noopener">${escapeHtml(c.heading)}</a></div>`;
+      return `<div style="font-size:12px;color:#555">Source: <em>${escapeHtml(c.heading)}</em></div>`;
+    }).join('');
     ans.innerHTML = `
       <div><strong>TL;DR:</strong> ${escapeHtml(data.tldr || '—')}</div>
       <ul style="margin:8px 0 0 18px">${(data.bullets||[]).slice(0,5).map(b=>`<li>${escapeHtml(b)}</li>`).join('')}</ul>
       ${data.details ? `<details style="margin-top:8px"><summary>If you need details</summary><div style="margin-top:6px">${escapeHtml(data.details)}</div></details>` : ''}
-      ${cite ? `<div style="margin-top:8px;font-size:12px;color:#555">Source: <em>${escapeHtml(cite.heading||'Unknown')}</em></div>` : ''}
+      ${citationsHtml}
     `;
     setStatus('Answer loaded', true);
   }
+
 
   // Escape HTML to be safe
   function escapeHtml(s) {
