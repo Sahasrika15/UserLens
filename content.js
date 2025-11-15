@@ -1,30 +1,44 @@
 (() => {
   'use strict';
 
-  // IDs
   const STYLE_ID = 'aura-style-override';
   const SHADOW_STYLE_ID = 'aura-shadow-override';
   const SIDEPANEL_HOST_ID = 'aura-sidepanel-host';
   const SIDEPANEL_BACKDROP_ID = 'aura-sidepanel-backdrop';
 
-  // State
   let currentProfile = null;
   let isEnabled = true;
   let auraPanelHost = null;
   let auraPanelIframe = null;
+  let autoNightModeEnabled = false;
+  let eyeComfortModeEnabled = false;
+  let nightModeProfile = { id: 'nightMode', name: 'Night Mode (Auto)', fontSize: 16, fontFamily: "'Roboto', sans-serif", bgColor: "#0a0a0a", textColor: "#e8e8e8", lineHeight: 1.6, letterSpacing: 0, wordSpacing: 0, animations: false, cursorType: 'auto' };
+  let eyeComfortProfile = { id: 'eyeComfort', name: 'Eye Comfort Mode', fontSize: 17, fontFamily: "'Verdana', sans-serif", bgColor: "#f5f1e8", textColor: "#2a2420", lineHeight: 1.7, letterSpacing: 0.05, wordSpacing: 0.1, animations: false, cursorType: 'auto' };
 
-  // --- Safe logging helpers ---
   function safeLog(...args) { try { console.log(...args); } catch (e) {} }
   function safeWarn(...args) { try { console.warn(...args); } catch (e) {} }
 
-  // --- Build CSS safely (returns empty string if profile missing) ---
+  function isNightTimeNow() {
+    const hour = new Date().getHours();
+    return hour >= 20 || hour < 6; // 8 PM (20:00) to 6 AM (06:00)
+  }
+
+  function getActiveProfile() {
+    if (eyeComfortModeEnabled) {
+      return eyeComfortProfile;
+    }
+    if (autoNightModeEnabled && isNightTimeNow()) {
+      return nightModeProfile;
+    }
+    return currentProfile;
+  }
+
   function buildCSS(profile) {
     if (!profile) return '';
     try {
       const disableAnim = profile.animations === false;
       const cursor = profile.cursorType || 'auto';
 
-      // Using template and later inserted as text node to keep CSP-safe
       return `
 :root {
   --aura-bg: ${profile.bgColor};
@@ -56,7 +70,6 @@ ${disableAnim ? `* { animation: none !important; transition: none !important; }`
     }
   }
 
-  // --- Apply style to document head (CSP-safe: text node) ---
   function injectGlobalStyle(profile) {
     try {
       const css = buildCSS(profile);
@@ -67,7 +80,6 @@ ${disableAnim ? `* { animation: none !important; transition: none !important; }`
 
       const style = document.createElement('style');
       style.id = STYLE_ID;
-      // Use text node insertion (CSP-friendly)
       style.appendChild(document.createTextNode(css));
 
       const head = document.head || document.getElementsByTagName('head')[0] || document.documentElement;
@@ -78,11 +90,9 @@ ${disableAnim ? `* { animation: none !important; transition: none !important; }`
     }
   }
 
-  // --- Inject into ShadowRoots ---
   function injectIntoShadowRoots(profile) {
     try {
       if (!profile) return;
-      // walk DOM for nodes that own shadowRoot
       const walker = document.createTreeWalker(
         document.body,
         NodeFilter.SHOW_ELEMENT,
@@ -100,7 +110,7 @@ ${disableAnim ? `* { animation: none !important; transition: none !important; }`
       const css = buildCSS(profile);
       roots.forEach(root => {
         if (!root) return;
-        if (root.querySelector(`#${SHADOW_STYLE_ID}`)) return; // avoid duplicates
+        if (root.querySelector(`#${SHADOW_STYLE_ID}`)) return;
         try {
           const style = document.createElement('style');
           style.id = SHADOW_STYLE_ID;
@@ -117,7 +127,6 @@ ${disableAnim ? `* { animation: none !important; transition: none !important; }`
     }
   }
 
-  // --- Remove any injected styles (global + shadow) ---
   function removeInjectedStyles() {
     try {
       document.getElementById(STYLE_ID)?.remove();
@@ -126,24 +135,32 @@ ${disableAnim ? `* { animation: none !important; transition: none !important; }`
     } catch (e) { safeWarn('AURA content: removeInjectedStyles', e); }
   }
 
-  // --- Full apply logic (keeps state) ---
   function applyProfileToDocument(profile) {
     if (!profile) return;
     currentProfile = profile;
     try {
-      // Remove existing
       document.getElementById(STYLE_ID)?.remove();
-      // Apply global + shadow roots if enabled
       if (isEnabled) {
-        injectGlobalStyle(profile);
-        injectIntoShadowRoots(profile);
+        const activeProfile = getActiveProfile();
+        injectGlobalStyle(activeProfile);
+        injectIntoShadowRoots(activeProfile);
       }
     } catch (e) {
       safeWarn('AURA content: applyProfileToDocument error', e);
     }
   }
 
-  // --- Scrape sections (headings -> sections) ---
+  // Auto-update profile every minute to check for night mode transitions
+  function setupAutoModeUpdater() {
+    setInterval(() => {
+      if (autoNightModeEnabled && isEnabled && currentProfile) {
+        const activeProfile = getActiveProfile();
+        injectGlobalStyle(activeProfile);
+        injectIntoShadowRoots(activeProfile);
+      }
+    }, 60000); // Check every minute
+  }
+
   function scrapeSections() {
     try {
       const hs = [...document.querySelectorAll('h1,h2,h3')];
@@ -183,8 +200,6 @@ ${disableAnim ? `* { animation: none !important; transition: none !important; }`
     }
   }
 
-  // --- Single defensive message listener ---
-  // Always send a response (or at least ack) to avoid "message port closed" errors.
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     try {
       if (!msg || !msg.type) {
@@ -192,7 +207,6 @@ ${disableAnim ? `* { animation: none !important; transition: none !important; }`
         return true;
       }
 
-      // SCRAPE SECTIONS (sync)
       if (msg.type === 'AURA_SCRAPE_SECTIONS') {
         try {
           const sections = scrapeSections();
@@ -203,7 +217,6 @@ ${disableAnim ? `* { animation: none !important; transition: none !important; }`
         return true;
       }
 
-      // APPLY PROFILE
       if (msg.type === 'AURA_APPLY_PROFILE') {
         try {
           applyProfileToDocument(msg.profile);
@@ -214,17 +227,14 @@ ${disableAnim ? `* { animation: none !important; transition: none !important; }`
         return true;
       }
 
-      // GENERIC ACK
       if (msg.type === 'AURA_TOGGLE_SOMETHING') {
         try { sendResponse({ ok: true }); } catch (e) {}
         return true;
       }
 
-      // OPEN SIDE PANEL (explicit open — avoids toggle edge-cases)
       if (msg.type === 'AURA_TOGGLE_PANEL') {
         safeLog('AURA content: received AURA_TOGGLE_PANEL — opening panel');
         try {
-          // Use explicit open to avoid display state edge-cases.
           auraOpenSidePanel();
           sendResponse({ ok: true });
         } catch (e) {
@@ -234,7 +244,6 @@ ${disableAnim ? `* { animation: none !important; transition: none !important; }`
         return true;
       }
 
-      // Unknown message -> ack to avoid port hang
       try { sendResponse({ ok: false, error: 'unknown_message_type' }); } catch (e) {}
       return true;
     } catch (e) {
@@ -244,7 +253,6 @@ ${disableAnim ? `* { animation: none !important; transition: none !important; }`
     }
   });
 
-  // --- Storage helpers ---
   function getCurrentProfileForPanel() {
     return new Promise((resolve) => {
       try {
@@ -262,7 +270,6 @@ ${disableAnim ? `* { animation: none !important; transition: none !important; }`
     });
   }
 
-  // --- Side panel helpers ---
   function auraGetPanelUrl() {
     try { return chrome.runtime.getURL('sidepanel.html'); } catch (e) { return 'sidepanel.html'; }
   }
@@ -286,10 +293,8 @@ ${disableAnim ? `* { animation: none !important; transition: none !important; }`
 
       auraPanelIframe = document.createElement('iframe');
       auraPanelIframe.title = 'AURA side panel';
-      // Use chrome.runtime.getURL for extension pages (web_accessible_resources must include sidepanel.html)
       auraPanelIframe.src = auraGetPanelUrl();
       auraPanelIframe.style.cssText = `width:100%; height:100%; border:0; background:#fff;`;
-      // IMPORTANT: do NOT set sandbox="allow-scripts allow-same-origin" — avoids sandbox escape warnings.
 
       document.body.appendChild(backdrop);
       document.body.appendChild(auraPanelHost);
@@ -297,7 +302,6 @@ ${disableAnim ? `* { animation: none !important; transition: none !important; }`
 
       auraPanelIframe.addEventListener('load', async () => {
         try {
-          // focus and send profile via postMessage (safe)
           auraPanelIframe.contentWindow?.focus();
           const profile = await getCurrentProfileForPanel();
           if (profile) {
@@ -310,7 +314,6 @@ ${disableAnim ? `* { animation: none !important; transition: none !important; }`
         } catch (e) { safeWarn('AURA content: iframe load send error', e); }
       });
 
-      // use a single window message listener (idempotent addition)
       if (!window.__aura_panel_msg_installed) {
         window.addEventListener('message', (e) => {
           try { if (e?.data?.AURA_PANEL_CLOSE) auraCloseSidePanel(); } catch (er) {}
@@ -345,7 +348,6 @@ ${disableAnim ? `* { animation: none !important; transition: none !important; }`
     else auraOpenSidePanel();
   }
 
-  // --- MutationObserver to inject into newly attached shadow roots (dev feature) ---
   const observer = new MutationObserver((mutations) => {
     try {
       if (!isEnabled || !currentProfile) return;
@@ -357,23 +359,24 @@ ${disableAnim ? `* { animation: none !important; transition: none !important; }`
         }
       }
       if (needsInject) {
-        // small delay to let shadow attach
-        setTimeout(() => injectIntoShadowRoots(currentProfile), 100);
+        setTimeout(() => injectIntoShadowRoots(getActiveProfile()), 100);
       }
     } catch (e) { safeWarn('AURA MutationObserver error', e); }
   });
 
-  // --- init: load storage and setup listeners ---
   function init() {
     try {
       if (chrome && chrome.storage && chrome.storage.sync) {
-        chrome.storage.sync.get(['aura_profile', 'aura_enabled'], (res) => {
+        chrome.storage.sync.get(['aura_profile', 'aura_enabled', 'aura_special_modes'], (res) => {
           try {
             isEnabled = typeof res.aura_enabled !== 'undefined' ? !!res.aura_enabled : true;
+            if (res && res.aura_special_modes) {
+              autoNightModeEnabled = res.aura_special_modes.autoNightModeEnabled || false;
+              eyeComfortModeEnabled = res.aura_special_modes.eyeComfortModeEnabled || false;
+            }
             if (res && res.aura_profile && isEnabled) {
               applyProfileToDocument(res.aura_profile);
             } else if (res && res.aura_profile) {
-              // keep currentProfile for later when enabled
               currentProfile = res.aura_profile;
             }
           } catch (er) { safeWarn('AURA content: storage.get callback', er); }
@@ -384,6 +387,15 @@ ${disableAnim ? `* { animation: none !important; transition: none !important; }`
             if (area === 'sync' && changes.aura_profile) {
               applyProfileToDocument(changes.aura_profile.newValue);
             }
+            if (area === 'sync' && changes.aura_special_modes) {
+              autoNightModeEnabled = changes.aura_special_modes.newValue?.autoNightModeEnabled || false;
+              eyeComfortModeEnabled = changes.aura_special_modes.newValue?.eyeComfortModeEnabled || false;
+              if (isEnabled && currentProfile) {
+                const activeProfile = getActiveProfile();
+                injectGlobalStyle(activeProfile);
+                injectIntoShadowRoots(activeProfile);
+              }
+            }
             if (area === 'sync' && changes.aura_enabled) {
               const enabled = changes.aura_enabled.newValue !== false;
               isEnabled = enabled;
@@ -392,7 +404,6 @@ ${disableAnim ? `* { animation: none !important; transition: none !important; }`
               } else if (currentProfile) {
                 applyProfileToDocument(currentProfile);
               } else {
-                // try to fetch profile
                 chrome.storage.sync.get(['aura_profile'], (res) => {
                   if (res && res.aura_profile) applyProfileToDocument(res.aura_profile);
                 });
@@ -401,7 +412,6 @@ ${disableAnim ? `* { animation: none !important; transition: none !important; }`
           } catch (e) { safeWarn('AURA content: storage.onChanged error', e); }
         });
       } else {
-        // local fallback
         try {
           const raw = localStorage.getItem('aura_profile');
           if (raw) {
@@ -412,17 +422,23 @@ ${disableAnim ? `* { animation: none !important; transition: none !important; }`
           const storedEnabled = localStorage.getItem('aura_enabled');
           isEnabled = storedEnabled === null ? true : storedEnabled !== 'false';
           if (!isEnabled) removeInjectedStyles();
+          const modesRaw = localStorage.getItem('aura_special_modes');
+          if (modesRaw) {
+            const modes = JSON.parse(modesRaw);
+            autoNightModeEnabled = modes.autoNightModeEnabled || false;
+            eyeComfortModeEnabled = modes.eyeComfortModeEnabled || false;
+          }
         } catch (e) { safeWarn('AURA local fallback error', e); }
       }
 
-      // start observing body for new nodes / shadow roots
       if (document.body) {
         observer.observe(document.body, { childList: true, subtree: true });
       }
+
+      setupAutoModeUpdater();
     } catch (e) { safeWarn('AURA content: init error', e); }
   }
 
-  // Run init when DOM ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {

@@ -10,6 +10,12 @@ const profiles = [
   { id: 'motor', name: 'Motor Coordination', fontSize: 18, fontFamily: "'Arial', sans-serif", bgColor: "#fffef6", textColor: "#0b1b3a", lineHeight: 1.6, letterSpacing: 0, wordSpacing: 0, animations: true, cursorType: 'auto' }
 ];
 
+// Special mode profiles
+const specialModes = {
+  nightMode: { id: 'nightMode', name: 'Night Mode (Auto)', fontSize: 16, fontFamily: "'Roboto', sans-serif", bgColor: "#0a0a0a", textColor: "#e8e8e8", lineHeight: 1.6, letterSpacing: 0, wordSpacing: 0, animations: false, cursorType: 'auto', isSpecial: true },
+  eyeComfort: { id: 'eyeComfort', name: 'Eye Comfort Mode', fontSize: 17, fontFamily: "'Verdana', sans-serif", bgColor: "#f5f1e8", textColor: "#2a2420", lineHeight: 1.7, letterSpacing: 0.05, wordSpacing: 0.1, animations: false, cursorType: 'auto', isSpecial: true }
+};
+
 const profilesGrid = document.getElementById('profilesGrid');
 const previewText = document.getElementById('previewText');
 const previewBox = document.getElementById('previewBox');
@@ -17,9 +23,9 @@ const saveBtn = document.getElementById('saveBtn');
 const openCustom = document.getElementById('openCustom');
 const customPanel = document.getElementById('customPanel');
 const resetCustom = document.getElementById('resetCustom');
-const exportCustom = document.getElementById('exportCustom');        // NEW
-const importCustom = document.getElementById('importCustom');        // NEW
-const importFileInput = document.getElementById('importFileInput');  // NEW
+const exportCustom = document.getElementById('exportCustom');
+const importCustom = document.getElementById('importCustom');
+const importFileInput = document.getElementById('importFileInput');
 
 const fontFamilyEl = document.getElementById('fontFamily');
 const fontSizeEl = document.getElementById('fontSize');
@@ -40,11 +46,11 @@ const animationShowcase = document.getElementById('animationShowcase');
 
 let currentSelection = null;
 let customSettings = {};
+let autoNightModeEnabled = false;
+let eyeComfortModeEnabled = false;
 
-// Default profile
 const defaultProfile = profiles[0];
 
-// Render profile cards
 function renderProfiles() {
   profilesGrid.innerHTML = '';
   profiles.forEach(p => {
@@ -57,7 +63,6 @@ function renderProfiles() {
   });
 }
 
-// Apply settings to preview
 function applyToPreview(settings) {
   previewBox.style.backgroundColor = settings.bgColor;
   previewText.style.color = settings.textColor;
@@ -81,7 +86,6 @@ function applyToPreview(settings) {
   }
 }
 
-// Select profile
 function selectProfile(profile) {
   currentSelection = profile;
   document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
@@ -92,7 +96,6 @@ function selectProfile(profile) {
   updateProfileDisplay(profile);
 }
 
-// Update profile name in preview
 function updateProfileDisplay(profile) {
   const profileDisplay = document.getElementById('profileDisplay');
   if (profileDisplay) {
@@ -100,7 +103,6 @@ function updateProfileDisplay(profile) {
   }
 }
 
-// Sync custom panel with current profile
 function updateCustomPanel(profile) {
   fontFamilyEl.value = profile.fontFamily;
   fontSizeEl.value = profile.fontSize;
@@ -117,12 +119,10 @@ function updateCustomPanel(profile) {
   animationsCheckbox.checked = profile.animations !== false;
 }
 
-// Toggle custom panel
 openCustom.addEventListener('click', () => {
   customPanel.classList.toggle('hidden');
 });
 
-// Live update from custom panel
 function updateCustomPreview() {
   const settings = {
     id: 'custom',
@@ -143,7 +143,6 @@ function updateCustomPreview() {
   updateProfileDisplay(settings);
 }
 
-// Live input listeners
 fontSizeEl.addEventListener('input', () => {
   fontSizeVal.textContent = fontSizeEl.value;
   updateCustomPreview();
@@ -168,7 +167,7 @@ animationsCheckbox.addEventListener('change', updateCustomPreview);
 
 // === EXPORT PROFILE ===
 exportCustom.addEventListener('click', () => {
-  updateCustomPreview(); // Sync latest values
+  updateCustomPreview();
   const dataStr = JSON.stringify(customSettings, null, 2);
   const blob = new Blob([dataStr], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -195,14 +194,11 @@ importFileInput.addEventListener('change', (e) => {
   reader.onload = (ev) => {
     try {
       const imported = JSON.parse(ev.target.result);
-
-      // Validate required fields
       const required = ['fontSize', 'fontFamily', 'bgColor', 'textColor', 'lineHeight', 'letterSpacing', 'wordSpacing', 'cursorType', 'animations'];
       const isValid = required.every(key => key in imported);
 
       if (!isValid) throw new Error('Invalid profile format');
 
-      // Apply to UI
       fontFamilyEl.value = imported.fontFamily;
       fontSizeEl.value = imported.fontSize;
       fontSizeVal.textContent = imported.fontSize;
@@ -225,7 +221,7 @@ importFileInput.addEventListener('change', (e) => {
     }
   };
   reader.readAsText(file);
-  e.target.value = ''; // Reset file input
+  e.target.value = '';
 });
 
 // === RESET TO DEFAULT ===
@@ -244,39 +240,103 @@ function resetToDefaultProfile() {
   alert('Settings reset to default (Dyslexia profile).');
 }
 
-// === SAVE & CONTINUE ===
-function persistAndContinue() {
-  const toSave = currentSelection || customSettings;
-  if (!toSave) {
-    alert('Please select or create a profile first.');
-    return;
-  }
+// === SPECIAL MODES: Night Mode & Eye Comfort ===
+function addSpecialModesUI() {
+  const header = document.querySelector('header');
+  if (!header) return;
 
-  const prefs = { aura_profile: toSave };
+  const modesContainer = document.createElement('div');
+  modesContainer.className = 'special-modes-container';
+  modesContainer.innerHTML = `
+    <div class="special-mode-label">Special Modes</div>
+    <div class="special-modes">
+      <button id="nightModeBtn" class="mode-btn" title="Auto Night Mode (8 PM - 6 AM)">
+        🌙 Night Mode
+      </button>
+      <button id="eyeComfortBtn" class="mode-btn" title="Eye Comfort Mode (always active)">
+        👁️ Eye Comfort
+      </button>
+    </div>
+  `;
+  header.appendChild(modesContainer);
+
+  const nightModeBtn = document.getElementById('nightModeBtn');
+  const eyeComfortBtn = document.getElementById('eyeComfortBtn');
+
+  nightModeBtn.addEventListener('click', () => {
+    autoNightModeEnabled = !autoNightModeEnabled;
+    nightModeBtn.classList.toggle('mode-btn-active', autoNightModeEnabled);
+    if (autoNightModeEnabled) {
+      selectProfile(specialModes.nightMode);
+      alert('Auto Night Mode enabled! (8 PM - 6 AM)');
+    } else {
+      selectProfile(defaultProfile);
+      alert('Auto Night Mode disabled.');
+    }
+    saveModeSettings();
+  });
+
+  eyeComfortBtn.addEventListener('click', () => {
+    eyeComfortModeEnabled = !eyeComfortModeEnabled;
+    eyeComfortBtn.classList.toggle('mode-btn-active', eyeComfortModeEnabled);
+    if (eyeComfortModeEnabled) {
+      selectProfile(specialModes.eyeComfort);
+      alert('Eye Comfort Mode enabled!');
+    } else {
+      selectProfile(defaultProfile);
+      alert('Eye Comfort Mode disabled.');
+    }
+    saveModeSettings();
+  });
+}
+
+function saveModeSettings() {
+  const modeSettings = {
+    autoNightModeEnabled,
+    eyeComfortModeEnabled
+  };
 
   if (chrome && chrome.storage && chrome.storage.sync) {
-    chrome.storage.sync.set(prefs, () => {
-      window.location.href = 'popup.html';
-    });
+    chrome.storage.sync.set({ aura_special_modes: modeSettings });
   } else {
-    localStorage.setItem('aura_profile', JSON.stringify(toSave));
-    window.location.href = 'popup.html';
+    localStorage.setItem('aura_special_modes', JSON.stringify(modeSettings));
   }
 }
 
-saveBtn.addEventListener('click', persistAndContinue);
-saveCustom.addEventListener('click', () => {
-  updateCustomPreview();
-  persistAndContinue();
-});
+function loadModeSettings() {
+  if (chrome && chrome.storage && chrome.storage.sync) {
+    chrome.storage.sync.get(['aura_special_modes'], (res) => {
+      if (res && res.aura_special_modes) {
+        autoNightModeEnabled = res.aura_special_modes.autoNightModeEnabled || false;
+        eyeComfortModeEnabled = res.aura_special_modes.eyeComfortModeEnabled || false;
+        updateModeButtons();
+      }
+    });
+  } else {
+    const raw = localStorage.getItem('aura_special_modes');
+    if (raw) {
+      const modes = JSON.parse(raw);
+      autoNightModeEnabled = modes.autoNightModeEnabled || false;
+      eyeComfortModeEnabled = modes.eyeComfortModeEnabled || false;
+      updateModeButtons();
+    }
+  }
+}
+
+function updateModeButtons() {
+  const nightModeBtn = document.getElementById('nightModeBtn');
+  const eyeComfortBtn = document.getElementById('eyeComfortBtn');
+  if (nightModeBtn) nightModeBtn.classList.toggle('mode-btn-active', autoNightModeEnabled);
+  if (eyeComfortBtn) eyeComfortBtn.classList.toggle('mode-btn-active', eyeComfortModeEnabled);
+}
 
 // === INITIALIZE ===
 renderProfiles();
 selectProfile(defaultProfile);
+addSpecialModesUI();
 
-// Load saved profile
 if (chrome && chrome.storage && chrome.storage.sync) {
-  chrome.storage.sync.get(['aura_profile'], (res) => {
+  chrome.storage.sync.get(['aura_profile', 'aura_special_modes'], (res) => {
     if (res && res.aura_profile) {
       const saved = res.aura_profile;
       currentSelection = saved;
@@ -288,6 +348,7 @@ if (chrome && chrome.storage && chrome.storage.sync) {
         document.getElementById(`card-${match.id}`).classList.add('selected');
       }
     }
+    loadModeSettings();
   });
 } else {
   const raw = localStorage.getItem('aura_profile');
@@ -298,4 +359,34 @@ if (chrome && chrome.storage && chrome.storage.sync) {
     updateCustomPanel(saved);
     updateProfileDisplay(saved);
   }
+  loadModeSettings();
 }
+
+function persistAndContinue() {
+  const toSave = currentSelection || customSettings;
+  if (!toSave) {
+    alert('Please select or create a profile first.');
+    return;
+  }
+
+  const prefs = {
+    aura_profile: toSave,
+    aura_special_modes: { autoNightModeEnabled, eyeComfortModeEnabled }
+  };
+
+  if (chrome && chrome.storage && chrome.storage.sync) {
+    chrome.storage.sync.set(prefs, () => {
+      window.location.href = 'popup.html';
+    });
+  } else {
+    localStorage.setItem('aura_profile', JSON.stringify(toSave));
+    localStorage.setItem('aura_special_modes', JSON.stringify(prefs.aura_special_modes));
+    window.location.href = 'popup.html';
+  }
+}
+
+saveBtn.addEventListener('click', persistAndContinue);
+saveCustom.addEventListener('click', () => {
+  updateCustomPreview();
+  persistAndContinue();
+});

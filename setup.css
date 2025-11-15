@@ -19,6 +19,59 @@ body{
 }
 header h1{margin:0;font-size:26px}
 header p{color:#555;margin-top:4px}
+
+/* === SPECIAL MODES CONTAINER === */
+.special-modes-container {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 10px;
+  padding: 16px;
+  margin-top: 16px;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+}
+
+.special-mode-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+  opacity: 0.9;
+}
+
+.special-modes {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mode-btn {
+  flex: 1;
+  min-width: 140px;
+  padding: 12px 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.mode-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.mode-btn-active {
+  background: rgba(255, 255, 255, 0.25) !important;
+  border-color: #fff !important;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
 .profiles-grid{
   display:grid;
   grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
@@ -328,7 +381,6 @@ select:focus{
   accent-color:var(--accent);
 }
 
-/* ========== PROFILE MANAGEMENT (Export / Import) ========== */
 .profile-management {
   margin-top: 20px;
   padding: 12px 0;
@@ -357,7 +409,6 @@ select:focus{
   padding: 8px 12px;
 }
 
-/* ========== MAIN ACTION BAR ========== */
 .custom-actions {
   display: flex;
   gap: 8px;
@@ -370,7 +421,6 @@ select:focus{
   flex: 1;
 }
 
-/* ========== FORM GRID ========== */
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -380,7 +430,6 @@ select:focus{
   grid-column: 1 / -1;
 }
 
-/* ========== RESPONSIVE ========== */
 @media (max-width: 700px) {
   body { padding: 12px; }
   .profiles-grid {
@@ -409,7 +458,6 @@ select:focus{
     gap: 12px;
   }
 
-  /* Mobile: Stack Export/Import buttons */
   .management-actions {
     flex-direction: column;
   }
@@ -417,8 +465,16 @@ select:focus{
     min-width: auto;
   }
 
-  /* Mobile: Stack main actions */
   .custom-actions {
     flex-direction: column;
+  }
+
+  .special-modes {
+    flex-direction: column;
+  }
+
+  .mode-btn {
+    min-width: auto;
+    width: 100%;
   }
 }
